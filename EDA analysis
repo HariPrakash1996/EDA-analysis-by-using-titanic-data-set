@@ -1,0 +1,210 @@
+#          EDA   ANALYSIS BY USING TITANIC DATASET
+
+import pandas as pd
+import numpy as np
+import os
+import math
+import glob
+import matplotlib.pyplot as plt
+import seaborn as sbn
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+sbn.set_style("whitegrid")
+%matplotlib inline
+
+td=pd.read_csv(r"E:\ds course\data sets\data sets from kaggle\titanic.csv")
+
+td.head()
+
+td.shape
+
+#  to get information about the data set
+
+
+td.info()
+
+td.describe()
+
+# gender plot
+
+sbn.factorplot("Sex",data=td,kind="count")
+
+# gender plot
+
+sbn.factorplot("Pclass",data=td,kind="count")
+
+# gender plot
+
+sbn.factorplot("Pclass",data=td,hue="Sex",kind="count")
+
+# data manipulation
+
+def titanic_children(Passenger):
+    age,sex=Passenger
+    if age <=16:
+        return "child"
+    else:
+        return sex
+    
+    
+    
+td["Person"]=td[["Age","Sex"]].apply(titanic_children,axis=1)
+
+td["Person"]
+
+# plotting a graph to check the ratio of male,female,child to each category of class
+
+
+
+sbn.factorplot("Pclass",data=td,hue="Person",kind="count")
+
+sbn.set(rc={"figure.figsize":(12,10)})
+td["Age"].hist(bins=160)
+
+as_fig=sbn.FacetGrid(td,hue="Sex")
+as_fig.map(sbn.kdeplot,"Age",shade=True)
+oldest=td["Age"].max()
+as_fig.set(xlim=(0,oldest))
+as_fig.add_legend()
+
+as_fig=sbn.FacetGrid(td,hue="Pclass")
+as_fig.map(sbn.kdeplot,"Age",shade=True)
+oldest=td["Age"].max()
+as_fig.set(xlim=(0,oldest))
+as_fig.add_legend()
+
+### mean age of the passengers
+td["Age"].mean()
+
+td["Age"]=td["Age"].fillna(td["Age"].mean())
+
+td["Age"]
+
+td.info()
+
+# drop the cabin col as there are many null values and it doesnot help the prediction
+
+
+
+
+td.drop("Cabin",axis=1,inplace=True)
+
+td.columns
+
+td.describe()
+
+td.info()
+
+### fill the null values in embarked col with S as there are more no of passengers boarder
+
+
+
+td["Embarked"]=td["Embarked"].fillna("S")
+
+td.info()
+
+td.isnull().values.any()
+
+sbn.factorplot("Embarked",data=td,kind="count")
+
+sbn.factorplot("Embarked",data=td,hue="Pclass",kind="count")
+
+# it is intereting to see that most of the passengers boarded at queenstown are from 3rd class
+
+### lets check who are with family ahd who are alone 
+
+## this can be found by adding parch and sibsp columns
+
+
+
+td["Alone"]=td.Parch + td.SibSp
+
+
+td.info()
+
+sbn.factorplot("Alone",kind="count",data=td)
+
+## if alone value is > 0 then they are with family else they are alone
+
+
+td["Alone"].loc[td["Alone"]> 0]= " with famiy"
+td["Alone"].loc[td["Alone"]== 0]= " without famiy"
+
+### let us visualize the alone column
+
+sbn.factorplot("Alone",kind="count",data=td)
+
+sbn.factorplot("Alone",kind="count",hue="Pclass",data=td)
+
+sbn.factorplot("Survived",kind="count",data=td)
+
+sbn.factorplot("Survived",kind="count",hue="Pclass",data=td)
+
+sbn.factorplot("Pclass","Survived",data=td,hue="Person")
+
+# the above graph shows the survival ratio for male is very low regardless of the class and the survival race is less for the 3rd class 
+
+sbn.factorplot("Pclass","Survived",data=td,hue="Alone")
+
+sbn.lmplot("Age","Survived",data=td)
+
+sbn.lmplot("Age","Survived",data=td,hue="Pclass")
+
+sbn.lmplot("Age","Survived",data=td)
+
+sbn.lmplot("Age","Survived",data=td,hue="Embarked")
+
+corr=td.corr()
+plt.figure(figsize=(10,10))
+
+
+
+sbn.heatmap(corr, vmax=.8, linewidths=0.01,square=True,annot=True,cmap="Blues",linecolor="white")
+
+
+plt.title(" correlation between features")
+
+td
+
+person_dummies=pd.get_dummies(td["Person"])
+alone_dummies=pd.get_dummies(td["Alone"])
+Embarked_dummies=pd.get_dummies(td["Embarked"])
+Embarked_dummies.drop("Q",axis=1,inplace=True)
+
+Pclass_dummies=pd.get_dummies(td["Pclass"])
+Pclass_dummies.columns=["class_1","class_2","class_3"]
+
+import math
+
+td["Age"]=td["Age"].apply(math.ceil)
+td["Fare"]=td["Fare"].apply(math.ceil)
+
+td=pd.concat([td,Pclass_dummies,person_dummies,alone_dummies,Embarked_dummies],axis=1)
+
+td.drop(["PassengerId","Name","Sex","SibSp","Parch","Ticket","Embarked"],axis=1,inplace=True)
+td.drop(["Alone","Person","Pclass","without family","male","class_3"],axis=1,inplace=True)
+
+td.columns
+
+td.head(2)
+
+td.drop("Alone",axis=1,inplace=True)
+
+td.head(2)
+
+x=td.drop("Survived",axis=1)
+y=td.Survived
+
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.2)
+
+len(x_train)
+
+len(x_test)
+
+log_model=LogisticRegression()
+log_model.fit(x_train,y_train)
+train_survival=log_model.predict(x_test)
+
+print(" accuracy score of logistic model is :",metrics.accuracy_score(y_true=y_test,y_pred=train_survival))
+
